@@ -41,7 +41,7 @@ regd_users.post("/login", (req, res) => {
     if (authenticatedUser(username, password)) {
         let accessToken = jwt.sign({
             data: password
-        }, 'access', { expiresIn: 60*60 });
+        }, 'access', { expiresIn: 60 * 60 });
         req.session.authorization = {
             accessToken, username
         }
@@ -56,29 +56,22 @@ regd_users.put("/auth/review/:isbn", (req, res) => {
     //Write your code here
     const isbn = req.params.isbn;
     let book = books[isbn];
+    // get the new book review from request to be added / modified
+    let newReview = req.query.review;
+    // get the user of the request to see if user had already added a previous review
+    let current_user = req.session.authorization.username;
+    console.log('CurrentUser:', current_user)
 
     if (book) { //Check is book exists
         // Check if review is available in query parameter
         if (!req.query.review) {
             return res.status(400).json({ errorMessage: "Missing Review" });
         }
-        // get the new book review from request to be added / modified
-        let newReview = req.query.review;
-        // get the user of the request to see if user had already added a previous review
-        let current_user = req.session.authorization.username;
-
-        //check for previous review from current user and remove if available
-        for (let review in books[isbn]["reviews"]) {
-            if (review.user === current_user) {
-                // remove old review
-                delete books[isbn].reviews[current_user];
-            }
-        }
         // add new review from current user
         books[isbn].reviews[current_user] = newReview;
 
         //res.send(`Books with the new review  ${newReview} updated.`);
-        res.send(books[isbn])
+        res.send(books)
     }
     else{
         res.send("Unable to find book!");
@@ -89,18 +82,21 @@ regd_users.put("/auth/review/:isbn", (req, res) => {
 regd_users.delete("/auth/review/:isbn", (req, res) => {
     const isbn = req.params.isbn;
     let book = books[isbn];
-    let current_user = req.session.authorization.username;
+    const current_user = req.session.authorization.username;
+
+    console.log('Current logged in User',current_user);
 
     // if book exists
     if (book) { 
-        for (let review in books[isbn]["reviews"]) {
+        for (let review in books[isbn].reviews) {
             // if review belongs to current user
-            if (review.user === current_user) {
+            if (review == current_user) {
                 // remove users review
                 delete books[isbn].reviews[current_user];
+                console.log("Deleted:", review)
             }
         }
-        res.send(books)
+        res.send(books[isbn])
     }
     else{
         res.send("Unable to find book!");
